@@ -1,0 +1,5 @@
+.env
+venv
+.DS_Store
+conversation_history
+conversation_history_comnets-official
