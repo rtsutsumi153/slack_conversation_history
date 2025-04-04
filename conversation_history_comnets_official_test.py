@@ -26,14 +26,12 @@ def get_response(api_url, payload=None):
         res = requests.get(url, headers=headers)
         return res.json()
     
-def get_bot_channels():
-    api_url = "users.conversations"
-    payload = {"types": "public_channel,private_channel"}
-    response = get_response(api_url, payload=payload)
+def get_channels():
+    api_url = "conversations.list"
+    #payload = {"types": "public_channel,private_channel"}
+    channels = get_response(api_url)
 
-    if response.get("ok"):
-        return {channel["id"]: channel["name"] for channel in response}
-    return {}
+    return channels
     
 def get_messages(channel_id, channel_name, users_dict):
     api_url = "conversations.history"
@@ -84,20 +82,26 @@ if __name__ == "__main__":
     users_dict={}
     for user in users["members"]:
         users_dict[user["id"]] = user["name"]
-
-    bot_channels = get_bot_channels()
-    unique_messages = []
-
     
-    for channel in bot_channels["channels"]:
-        messages = get_messages(channel["id"], channel["name"], users_dict)
+    # すべてのチャンネルを取得
+    channels = get_channels()
+    # すべてのチャンネルのうち，アプリが追加されているチャンネルのみを抽出
+    app_channels = []
+    for channel in channels["channels"]:
+        if channel["is_member"]:
+            app_channels.append(channel)
+
+    unique_messages = []
+    
+    for app_channel in app_channels:
+        messages = get_messages(app_channel["id"], app_channel["name"], users_dict)
         seen_texts = set()  # 出力済みのテキストを記憶するセットを初期化
         for msg in messages:
             user = users_dict[msg["user"]]
             text = msg["text"]
             thread_ts = msg.get("thread_ts", msg["ts"]) # スレッド場合はthread_tsを取得、それ以外はtsを取得
             if text not in seen_texts:  #テキストがセットに含まれていなければ出力し，セットに追加する
-                unique_messages.append([channel["name"], user, text, thread_ts])
+                unique_messages.append([app_channel["name"], user, text, thread_ts])
                 seen_texts.add(text)
 
     df = pd.DataFrame(unique_messages, columns=["channel_name", "user", "text", "timestamp"])
