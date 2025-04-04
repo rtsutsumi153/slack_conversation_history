@@ -9,21 +9,25 @@ if __name__ == "__main__":
     users_dict={}
     for user in users["members"]:
         users_dict[user["id"]] = user["name"]
-
-    channels_url = "conversations.list"
-    channels = utils.get_response(channels_url)
+    
+    # すべてのチャンネルのうち，アプリが追加されているチャンネルのみを抽出して取得
+    app_channels = utils.extract_app_channels()
 
     unique_messages = []
 
-    for channel in channels["channels"]:
-        messages = utils.get_messages(channel["id"], channel["name"], users_dict)
+    for app_channel in app_channels:
+        messages = utils.get_messages(app_channel["id"], app_channel["name"], users_dict)
         seen_texts = set()  # 出力済みのテキストを記憶するセットを初期化
         for msg in messages:
-            user = users_dict[msg["user"]]
+            if "bot_id" in msg: # botのメッセージは無視する
+                continue
+            else:
+                user = users_dict[msg["user"]]
+
             text = msg["text"]
             thread_ts = msg.get("thread_ts", msg["ts"]) # スレッド場合はthread_tsを取得、それ以外はtsを取得
             if text not in seen_texts:  #テキストがセットに含まれていなければ出力し，セットに追加する
-                unique_messages.append([channel["name"], user, text, thread_ts])
+                unique_messages.append([app_channel["name"], user, text, thread_ts])
                 seen_texts.add(text)
 
     df = pd.DataFrame(unique_messages, columns=["channel_name", "user", "text", "timestamp"])
@@ -32,7 +36,7 @@ if __name__ == "__main__":
     os.makedirs(save_dir, exist_ok=True)  # ディレクトリがなければ作成
 
     # 現在の日付を取得（例：2024-04-03)
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_name = f"conversation_history_{date_str}.csv"
 
     # CSVの保存

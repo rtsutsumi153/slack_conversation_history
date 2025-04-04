@@ -24,6 +24,25 @@ def get_response(api_url, payload=None):
         res = requests.get(url, headers=headers)
         return res.json()
     
+def get_channels():
+    api_url = "conversations.list"
+    #payload = {"types": "public_channel,private_channel"}
+    channels = get_response(api_url)
+
+    return channels
+
+def extract_app_channels():
+    # すべてのチャンネルを取得
+    channels = get_channels()
+    # すべてのチャンネルのうち，アプリが追加されているチャンネルのみを抽出
+    app_channels = []
+    for channel in channels["channels"]:
+        if channel["is_member"]:
+            app_channels.append(channel)
+    
+    return app_channels
+
+    
 def get_messages(channel_id, channel_name, users_dict):
     api_url = "conversations.history"
     payload = {

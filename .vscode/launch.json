@@ -4,11 +4,19 @@
     // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python: conversation_history_comnets_official_test.py",
             "type": "debugpy",
             "request": "launch",
             "program": "./conversation_history_comnets_official_test.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: main.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./main.py",
             "console": "integratedTerminal"
         },
     ]
