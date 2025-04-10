@@ -25,12 +25,13 @@ if __name__ == "__main__":
                 user = users_dict[msg["user"]]
 
             text = msg["text"]
-            thread_ts = msg.get("thread_ts", msg["ts"]) # スレッド場合はthread_tsを取得、それ以外はtsを取得
+            ts = msg.get("ts") # メッセージのtsを取得
+            thread_ts = msg.get("thread_ts", "not_thread") # スレッド内のメッセージならthread_tsにそのスレッドが立てられた時刻を記載．スレッドではないメッセージならnot_threadと記載．
             if text not in seen_texts:  #テキストがセットに含まれていなければ出力し，セットに追加する
-                unique_messages.append([app_channel["name"], user, text, thread_ts])
+                unique_messages.append([app_channel["name"], user, text, ts, thread_ts])
                 seen_texts.add(text)
         
-        df = pd.DataFrame(unique_messages, columns=["channel_name", "user", "text", "timestamp"])
+        df = pd.DataFrame(unique_messages, columns=["channel_name", "user", "text", "message_timestamp", "thread_timestamp"])
         # 保存先ディレクトリを指定
         save_dir = "conversation_history"  # 例えば "C:/Users/YourName/Documents/output" など
         os.makedirs(save_dir, exist_ok=True)  # ディレクトリがなければ作成
