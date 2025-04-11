@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 import os
 import csv
 from collections import deque
+import pandas as pd
+from datetime import datetime
+import re
 
 # .envファイルから環境変数を読み込む
 load_dotenv()
@@ -34,6 +37,8 @@ def get_channels():
     return channels
 
 def extract_app_channels():
+    '''すべてのチャンネルのうち，アプリが追加されているチャンネルのみを抽出する関数
+    '''
     # すべてのチャンネルを取得
     channels = get_channels()
     # すべてのチャンネルのうち，アプリが追加されているチャンネルのみを抽出
@@ -46,6 +51,8 @@ def extract_app_channels():
 
     
 def get_messages(channel_id, channel_name, users_dict, oldest_ts=0):
+    '''指定したチャンネルのメッセージ履歴を取得する関数
+    '''
     api_url = "conversations.history"
     payload = {
         "channel": channel_id,
@@ -80,12 +87,13 @@ def get_messages(channel_id, channel_name, users_dict, oldest_ts=0):
     messages_sorted = sorted(messages, key=lambda x: x["ts"])
     return messages_sorted
 
-def get_oldest_message_ts(channel_name):
+def get_oldest_message_ts(save_dir, channel_name):
     '''前回のメッセージ履歴データの最後のメッセージのタイムスタンプを取得
     '''
-    filepath = f"conversation_history/{channel_name}.csv"
+    leatest_file = get_latest_file(save_dir, channel_name) # 最も新しいメッセージ履歴のファイル名を検索
+    latest_file_path = f"{save_dir}/{leatest_file}"
 
-    with open(filepath, newline='', encoding='utf-8-sig') as csvfile:
+    with open(latest_file_path, newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.reader(csvfile)
         last_row = deque(reader, maxlen=1)[0] # 最後の１行だけ取得
     
@@ -96,6 +104,41 @@ def get_oldest_message_ts(channel_name):
     #    return last_row[4] # thread_timestampを返す
 
     return last_row[3]  # message_timestampを返す
+
+def add_csv(save_dir, channel_name, df):
+    '''前回のメッセージ取得履歴のファイルに現在のメッセージの差分を追記する関数
+    '''
+    # 追記先のファイル（既存のCSV）
+    leatest_file = get_latest_file(save_dir, channel_name) # 前回のメッセージ取得履歴のファイル名を検索
+    target_csv = f"{save_dir}/{leatest_file}"
+
+    # 追記（ヘッダーなしで追記モード）
+    df.to_csv(target_csv, mode='a', header=False, index=False)
+
+    # ファイルの名前に更新日を記載
+    date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    renamed_csv = f"{save_dir}/{channel_name}_{date_str}.csv"
+    os.rename(target_csv, renamed_csv)
+
+def get_latest_file(save_dir, channel_name):
+    '''これまで記録されているメッセージ履歴の中で最も新しいファイルのファイル名を検索する関数
+    '''
+    # 変数を正規表現に埋め込む（チャンネル名をエスケープして安全に）
+    escaped_channel_name = re.escape(channel_name)
+    pattern = re.compile(rf'^{escaped_channel_name}_(\d{{8}}_\d{{6}})\.csv$')  #フォーマット channel_name_YYYYMMDD_HHMMSS.csv
+
+    latest_file = None
+    latest_date = None
+
+    for filename in os.listdir(save_dir):
+        match = pattern.search(filename)
+        if match:
+            file_date = datetime.strptime(match.group(1), "%Y%m%d_%H%M%S")
+            if latest_date is None or file_date > latest_date:
+                latest_date = file_date
+                latest_file = filename
+
+    return latest_file
 
 def remove_first_element(messages):
     '''messagesの先頭の要素を削除して詰める関数

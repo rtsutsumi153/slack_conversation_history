@@ -15,9 +15,13 @@ if __name__ == "__main__":
 
     for app_channel in app_channels:
         unique_messages = []
+
+        # 保存先ディレクトリを指定
+        save_dir = "conversation_history"  # 例えば "C:/Users/YourName/Documents/output" など
+        os.makedirs(save_dir, exist_ok=True)  # ディレクトリがなければ作成
         
         # 前回のメッセージ履歴データの最後のメッセージのタイムスタンプを取得
-        oldest_ts = utils.get_oldest_message_ts(app_channel["name"])
+        oldest_ts = utils.get_oldest_message_ts(save_dir, app_channel["name"])
         
         # oldest_ts以降のメッセージのみを取得
         messages = utils.get_messages(app_channel["id"], app_channel["name"], users_dict, oldest_ts=oldest_ts)
@@ -37,14 +41,14 @@ if __name__ == "__main__":
                 seen_texts.add(text)
         
         df = pd.DataFrame(unique_messages, columns=["channel_name", "user", "text", "message_timestamp", "thread_timestamp"])
-        # 保存先ディレクトリを指定
-        save_dir = "conversation_history"  # 例えば "C:/Users/YourName/Documents/output" など
-        os.makedirs(save_dir, exist_ok=True)  # ディレクトリがなければ作成
 
         # 現在の日付を取得（例：2024-04-03)
-        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = f"{app_channel["name"]}_{date_str}.csv"
+        #date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        #file_name = f"{app_channel["name"]}_{date_str}.csv"
 
         # CSVの保存
-        file_path = os.path.join(save_dir, file_name)
-        df.to_csv(file_path, index=False, encoding='utf-8-sig')
+        #file_path = os.path.join(save_dir, file_name)
+        #df.to_csv(file_path, index=False, encoding='utf-8-sig')
+
+        # メッセージ履歴の差分を既存のcsvに追記
+        utils.add_csv(save_dir, app_channel["name"], df)
