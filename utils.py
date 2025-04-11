@@ -2,6 +2,8 @@ import requests
 from tqdm import tqdm
 from dotenv import load_dotenv
 import os
+import csv
+from collections import deque
 
 # .envファイルから環境変数を読み込む
 load_dotenv()
@@ -43,11 +45,12 @@ def extract_app_channels():
     return app_channels
 
     
-def get_messages(channel_id, channel_name, users_dict):
+def get_messages(channel_id, channel_name, users_dict, oldest_ts=0):
     api_url = "conversations.history"
     payload = {
         "channel": channel_id,
-        "limit": 1000
+        "limit": 1000,
+        "oldest": oldest_ts,
         }
 
     message_logs = get_response(api_url, payload=payload)
@@ -56,7 +59,8 @@ def get_messages(channel_id, channel_name, users_dict):
 
     for item in tqdm(message_logs["messages"]):
         messages.append(item)
-
+        
+        # もしitemがスレッドの親メッセージだったら，そのスレッド内のメッセージも取得する．
         if "thread_ts" in item:
             thread_ts = item["thread_ts"]
             reply_api_url = "conversations.replies"
@@ -67,13 +71,39 @@ def get_messages(channel_id, channel_name, users_dict):
                 }
             replies = get_response(reply_api_url, payload=payload)
 
-            # 最初のメッセージを除外してスレッド内のメッセージを追加する
+            # 最初の親メッセージを除外してスレッド内のメッセージを追加する
             for reply in replies["messages"]:
                 if reply.get("thread_ts") == thread_ts and reply.get("parent_user_id") is not None:
                     messages.append(reply)
-
+    
+    # メッセージの送信時間順で並び替え
     messages_sorted = sorted(messages, key=lambda x: x["ts"])
     return messages_sorted
+
+def get_oldest_message_ts(channel_name):
+    '''前回のメッセージ履歴データの最後のメッセージのタイムスタンプを取得
+    '''
+    filepath = f"conversation_history/{channel_name}.csv"
+
+    with open(filepath, newline='', encoding='utf-8-sig') as csvfile:
+        reader = csv.reader(csvfile)
+        last_row = deque(reader, maxlen=1)[0] # 最後の１行だけ取得
+    
+    # もし最後のメッセージがスレッドの親メッセージまたはスレッド内のメッセージだったら，親メッセージのタイムスタンプを返す．スレッドではなかったら，そのメッセージのタイムスタンプを返す．
+    #if last_row[4] == "not_thread":
+    #    return last_row[3] # message_timestampを返す
+    #else:
+    #    return last_row[4] # thread_timestampを返す
+
+    return last_row[3]  # message_timestampを返す
+
+def remove_first_element(messages):
+    '''messagesの先頭の要素を削除して詰める関数
+    '''
+    if messages:
+        return messages[1:]
+    else:
+        return messages
 
 def print_channel_messages(channel_name, messages, users_dict):
     seen_texts = set() # 出力済みのテキストを記憶するセットを初期化

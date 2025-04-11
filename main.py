@@ -16,7 +16,12 @@ if __name__ == "__main__":
     for app_channel in app_channels:
         unique_messages = []
         
-        messages = utils.get_messages(app_channel["id"], app_channel["name"], users_dict)
+        # 前回のメッセージ履歴データの最後のメッセージのタイムスタンプを取得
+        oldest_ts = utils.get_oldest_message_ts(app_channel["name"])
+        
+        # oldest_ts以降のメッセージのみを取得
+        messages = utils.get_messages(app_channel["id"], app_channel["name"], users_dict, oldest_ts=oldest_ts)
+
         seen_texts = set()  # 出力済みのテキストを記憶するセットを初期化
         for msg in messages:
             if "bot_id" in msg: # botのメッセージは無視する
