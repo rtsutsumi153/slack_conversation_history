@@ -179,7 +179,7 @@ def get_latest_file(save_dir, channel_name):
 
 def remove_first_element(messages):
     '''messagesの先頭の要素を削除して詰める関数
-    
+
     '''
     if messages:
         return messages[1:]
@@ -191,7 +191,7 @@ def print_channel_messages(channel_name, messages, users_dict):
     for msg in messages:
         user = users_dict[msg["user"]]
         text = msg["text"]
-        thread_ts =msg.get("thread_ts", msg["ts"]) # スレッドの場合はthread_tsを取得，それ以外はtsを取得
+        thread_ts = msg.get("thread_ts", msg["ts"]) # スレッドの場合はthread_tsを取得，それ以外はtsを取得
         if text not in seen_texts: # テキストがセットに含まれていなければ出力し，セットに追加する
             print(f"{channel_name},{user},{text},{thread_ts}")
             seen_texts.add(text)
