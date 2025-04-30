@@ -132,24 +132,58 @@ def get_oldest_message_ts(save_dir, channel_name):
 
     return last_row[3]  # message_timestampを返す
 
-def add_csv(save_dir, channel_name, df):
+def add_csv(save_dir, channel_name, df, file_exist):
     '''前回のメッセージ取得履歴のファイルに現在のメッセージの差分を追記する関数
     Args:
         save_dir (str): メッセージ履歴データを保存しているディレクトリのパス
         channel_name (str): メッセージ履歴を取得したいチャンネルの名前
         df (PandasライブラリのDataFrameクラスのインスタンス): 前回のメッセージ取得履歴のファイルからの現在のメッセージの差分
+        file_exist (str): save_dir内にchannel_nameを含むファイル名のマイルが存在するかどうか（Noneなら存在しない）
     '''
-    # 追記先のファイル（既存のCSV）
-    leatest_file = get_latest_file(save_dir, channel_name) # 前回のメッセージ取得履歴のファイル名を検索
-    target_csv = f"{save_dir}/{leatest_file}"
-
-    # 追記（ヘッダーなしで追記モード）
-    df.to_csv(target_csv, mode='a', header=False, index=False)
-
     # ファイルの名前に更新日を記載
     date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    renamed_csv = f"{save_dir}/{channel_name}_{date_str}.csv"
-    os.rename(target_csv, renamed_csv)
+
+    if file_exist == None:
+        file_name = f"{channel_name}_{date_str}.csv"
+
+        # CSVの保存
+        file_path = os.path.join(save_dir, file_name)
+        df.to_csv(file_path, index=False, encoding='utf-8-sig')
+    else:
+        # 追記先のファイル（既存のCSV）
+        leatest_file = get_latest_file(save_dir, channel_name) # 前回のメッセージ取得履歴のファイル名を検索
+        target_csv = f"{save_dir}/{leatest_file}"
+
+        # 追記（ヘッダーなしで追記モード）
+        df.to_csv(target_csv, mode='a', header=False, index=False)
+
+        
+        renamed_csv = f"{save_dir}/{channel_name}_{date_str}.csv"
+        os.rename(target_csv, renamed_csv)
+
+def search_file_name(save_dir, channel_name):
+    '''save_dir内にchannel_nameを含むファイル名のマイルが存在するか調べる関数
+    Args:
+        save_dir (str): メッセージ履歴データを保存しているディレクトリのパス
+        channel_name (str): メッセージ履歴を取得したいチャンネルの名前
+    
+    Returns:
+        match: channel_nameを含んだファイル名のファイルがなかった場合Noneを返す
+
+    '''
+    # 変数を正規表現に埋め込む（チャンネル名をエスケープして安全に）
+    escaped_channel_name = re.escape(channel_name)
+    pattern = re.compile(rf'^{escaped_channel_name}_(\d{{8}}_\d{{6}})\.csv$')  #フォーマット channel_name_YYYYMMDD_HHMMSS.csv
+
+    file_exist = False
+
+    for filename in os.listdir(save_dir):
+        match = pattern.search(filename)
+        if match:
+            file_exist = True
+            break
+
+    return file_exist
 
 def get_latest_file(save_dir, channel_name):
     '''これまで記録されているメッセージ履歴の中で最も新しいファイルのファイル名を検索する関数
@@ -175,6 +209,7 @@ def get_latest_file(save_dir, channel_name):
                 latest_date = file_date
                 latest_file = filename
 
+    
     return latest_file
 
 def remove_first_element(messages):
