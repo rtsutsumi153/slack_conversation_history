@@ -27,11 +27,11 @@ if __name__ == "__main__":
         if  not file_exist:
             messages = utils.get_messages(app_channel["id"], app_channel["name"], users_dict)
         else:
-            # 前回のメッセージ履歴データの最後のメッセージのタイムスタンプを取得
-            oldest_ts = utils.get_oldest_message_ts(save_dir, app_channel["name"])
+            # 前回のメッセージ履歴データの最後のメッセージのタイムスタンプと親スレッドのタイムスタンプを取得
+            oldest_message_ts, oldest_thread_ts  = utils.get_oldest_message_ts(save_dir, app_channel["name"])
             
             # oldest_ts以降のメッセージのみを取得
-            messages = utils.get_messages(app_channel["id"], app_channel["name"], users_dict, oldest_ts=oldest_ts)
+            messages = utils.get_messages(app_channel["id"], app_channel["name"], users_dict, oldest_message_ts=oldest_message_ts, oldest_thread_ts=oldest_thread_ts)
 
         seen_texts = set()  # 出力済みのテキストを記憶するセットを初期化
         for msg in messages:
@@ -41,10 +41,10 @@ if __name__ == "__main__":
                 user = users_dict[msg["user"]]
 
             text = msg["text"]
-            ts = msg.get("ts") # メッセージのtsを取得
+            message_ts = msg.get("ts") # メッセージのtsを取得
             thread_ts = msg.get("thread_ts", "not_thread") # スレッド内のメッセージならthread_tsにそのスレッドが立てられた時刻を記載．スレッドではないメッセージならnot_threadと記載．
             if text not in seen_texts:  #テキストがセットに含まれていなければ出力し，セットに追加する
-                unique_messages.append([app_channel["name"], user, text, ts, thread_ts])
+                unique_messages.append([app_channel["name"], user, text, message_ts, thread_ts])
                 seen_texts.add(text)
         
         df = pd.DataFrame(unique_messages, columns=["channel_name", "user", "text", "message_timestamp", "thread_timestamp"])

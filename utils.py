@@ -63,27 +63,43 @@ def extract_app_channels():
     return app_channels
 
     
-def get_messages(channel_id, channel_name, users_dict, oldest_ts=0):
+def get_messages(channel_id, channel_name, users_dict, oldest_message_ts=0, oldest_thread_ts="not_thread"):
     '''指定したチャンネルのメッセージ履歴を取得する関数
     Args:
         channel_id (str): チャンネルのID
         channel_name (str): チャンネルの名前
         users_dict (dic): ワークスペース内の全てのユーザ情報
-        oldest_ts (str): 前回のメッセージ履歴取得ファイルの一番最後のメッセージのタイムスタンプ
+        oldest_message_ts (str): 前回のメッセージ履歴取得ファイルの一番最後のメッセージのタイムスタンプ
+        oldest_thread_ts (str): 前回のメッセージ履歴取得ファイルの一番最後のスレッドのタイムスタンプ
 
     Returns:
         messages_sorted: 取得したメッセージ情報をメッセージのタイムスタンプ順でソートしたもの
     '''
+    messages = []
+
+    if oldest_thread_ts != "not_thread":
+        reply_api_url = "conversations.replies"
+        payload = {
+                "channel": channel_id,
+                "ts": oldest_thread_ts,
+                "limit": 1000,
+                "oldest": oldest_message_ts
+                }
+        replies = get_response(reply_api_url, payload=payload)
+
+        # 最初の親メッセージを除外してスレッド内のメッセージを追加する
+        for reply in replies["messages"]:
+            if reply.get("thread_ts") == oldest_thread_ts and reply.get("parent_user_id") is not None:
+                messages.append(reply)
+    
     api_url = "conversations.history"
     payload = {
         "channel": channel_id,
         "limit": 1000,
-        "oldest": oldest_ts,
+        "oldest": oldest_message_ts,
         }
 
     message_logs = get_response(api_url, payload=payload)
-
-    messages = []
 
     for item in tqdm(message_logs["messages"]):
         messages.append(item)
@@ -130,7 +146,7 @@ def get_oldest_message_ts(save_dir, channel_name):
     #else:
     #    return last_row[4] # thread_timestampを返す
 
-    return last_row[3]  # message_timestampを返す
+    return last_row[3], last_row[4]  # message_timestampとthread_timestampを返す
 
 def add_csv(save_dir, channel_name, df, file_exist):
     '''前回のメッセージ取得履歴のファイルに現在のメッセージの差分を追記する関数
@@ -143,7 +159,7 @@ def add_csv(save_dir, channel_name, df, file_exist):
     # ファイルの名前に更新日を記載
     date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    if file_exist == None:
+    if not file_exist:
         file_name = f"{channel_name}_{date_str}.csv"
 
         # CSVの保存
